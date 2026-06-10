@@ -99,6 +99,7 @@ services:
       SPRING_PROFILES_ACTIVE: docker
       CONFIG_SERVER_URL: http://config-service:8888
       JWT_SECRET: ${JWT_SECRET}
+      APP_CORS_ALLOWED_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
       JAVA_TOOL_OPTIONS: "-Xmx384m"
     depends_on:
       discovery-service:
