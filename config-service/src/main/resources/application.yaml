@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: config-service
+
+  profiles:
+    active: native
+
+  cloud:
+    config.server.native.search-locations: ${CONFIG_REPO_PATH:file:./../config-repo}
+
+server.port: 8888
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  health:
+    config:
+      enabled: false
+---
+spring:
+  config:
+    activate:
+      on-profile: k8s
+
+  cloud:
+    discovery:
+      enabled: false
+    config.server.native.search-locations: ${CONFIG_REPO_PATH:file:/config-repo}
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false

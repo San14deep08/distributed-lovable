@@ -1,0 +1,91 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+
+  kafka:
+    bootstrap-servers: localhost:29092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: lovable-clone-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.codingshuttle.distributed_lovable.*"
+
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+    enabled: true
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    hostname: localhost
+
+jwt.secretKey: ${JWT_SECRET:asfd9asfdaoijfalkjl23u4oi5jlkjf98790890890ugojvakglsdfjn8yuh}
+
+app:
+  frontend:
+    url: http://localhost:8080/frontend
+  preview:
+    domain: localhost
+    namespace: shuttle-apps
+    proxy-port: 8090
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  health:
+    config:
+      enabled: false
+
+logging:
+  level:
+    org.apache.kafka.clients: WARN
+    org.apache.kafka.common: WARN
+
+---
+
+spring:
+  config:
+    activate:
+      on-profile: k8s
+  kafka:
+    bootstrap-servers: kafka.lovable-core.svc.cluster.local:9092
+  cloud:
+    discovery:
+      enabled: false
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+jwt.secretKey: ${JWT_SECRET}
+
+app:
+  frontend:
+    url: ${FRONTEND_URL}
+  preview:
+    domain: ${PREVIEW_DOMAIN}
+    namespace: ${PREVIEW_NAMESPACE}
+    proxy-port: ${PROXY_PORT}
+
+ACCOUNT_SERVICE_URI: http://account-service
+WORKSPACE_SERVICE_URI: http://workspace-service
+INTELLIGENCE_SERVICE_URI: http://intelligence-service
+
