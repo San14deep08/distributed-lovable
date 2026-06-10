@@ -39,3 +39,24 @@ minio:
   access-key: ${MINIO_ROOT_USER}
   secret-key: ${MINIO_ROOT_PASSWORD}
   project-bucket: projects
+---
+
+spring:
+  config:
+    activate:
+      on-profile: docker
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/lovable-workspace-db
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  data:
+    redis:
+      host: redis
+      port: 6379
+
+minio:
+  url: http://minio:9000
+  access-key: ${MINIO_ROOT_USER:minioadmin}
+  secret-key: ${MINIO_ROOT_PASSWORD:minioadmin123}
+  project-bucket: projects

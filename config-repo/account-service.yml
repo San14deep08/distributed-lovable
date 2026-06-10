@@ -32,3 +32,20 @@ stripe:
     secret: ${STRIPE_API_KEY}
   webhook:
     secret: ${STRIPE_WEBHOOK_SECRET}
+---
+
+spring:
+  config:
+    activate:
+      on-profile: docker
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/lovable-account-db
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+stripe:
+  api:
+    secret: ${STRIPE_API_KEY:sk_test_dummy}
+  webhook:
+    secret: ${STRIPE_WEBHOOK_SECRET:whsec_dummy}

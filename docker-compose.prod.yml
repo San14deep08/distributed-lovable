@@ -1,0 +1,167 @@
+# Production deployment for a single EC2 host.
+# Postgres runs on AWS RDS (set DB_HOST/DB_USERNAME/DB_PASSWORD in .env.prod).
+# Images come from ECR: set ECR_REGISTRY, e.g. 123456789.dkr.ecr.ap-south-1.amazonaws.com
+#
+# Usage: docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  kafka:
+    image: apache/kafka:3.9.0
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_HEAP_OPTS: "-Xmx256m -Xms128m"
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./infra/starter-template:/starter-template:ro
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin123} &&
+      mc mb --ignore-existing local/projects &&
+      mc mb --ignore-existing local/starter-projects &&
+      mc cp --recursive /starter-template/ local/starter-projects/ &&
+      echo 'buckets ready'
+      "
+
+  config-service:
+    image: ${ECR_REGISTRY}/lovable-config-service:latest
+    restart: unless-stopped
+    environment:
+      CONFIG_REPO_PATH: file:/config-repo
+      JAVA_TOOL_OPTIONS: "-Xmx256m"
+    volumes:
+      - ./config-repo:/config-repo:ro
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8888' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  discovery-service:
+    image: ${ECR_REGISTRY}/lovable-discovery-service:latest
+    restart: unless-stopped
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx256m"
+    depends_on:
+      config-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8761' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  api-gateway:
+    image: ${ECR_REGISTRY}/lovable-api-gateway:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-service:8888
+      JWT_SECRET: ${JWT_SECRET}
+      JAVA_TOOL_OPTIONS: "-Xmx384m"
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+
+  account-service:
+    image: ${ECR_REGISTRY}/lovable-account-service:latest
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-service:8888
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      STRIPE_API_KEY: ${STRIPE_API_KEY:-sk_test_dummy}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-whsec_dummy}
+      JAVA_TOOL_OPTIONS: "-Xmx512m"
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+
+  workspace-service:
+    image: ${ECR_REGISTRY}/lovable-workspace-service:latest
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-service:8888
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      JAVA_TOOL_OPTIONS: "-Xmx512m"
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      minio:
+        condition: service_healthy
+
+  intelligence-service:
+    image: ${ECR_REGISTRY}/lovable-intelligence-service:latest
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-service:8888
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      AI_API_KEY: ${AI_API_KEY:-dummy-key}
+      JAVA_TOOL_OPTIONS: "-Xmx512m"
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+
+volumes:
+  minio-data:

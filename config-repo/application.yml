@@ -89,3 +89,32 @@ ACCOUNT_SERVICE_URI: http://account-service
 WORKSPACE_SERVICE_URI: http://workspace-service
 INTELLIGENCE_SERVICE_URI: http://intelligence-service
 
+
+---
+
+spring:
+  config:
+    activate:
+      on-profile: docker
+  kafka:
+    bootstrap-servers: kafka:9092
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://discovery-service:8761/eureka/
+    enabled: true
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+
+jwt.secretKey: ${JWT_SECRET}
+
+app:
+  frontend:
+    url: ${FRONTEND_URL:http://localhost:8080/frontend}
+  preview:
+    domain: ${PREVIEW_DOMAIN:localhost}
+    namespace: ${PREVIEW_NAMESPACE:shuttle-apps}
+    proxy-port: ${PROXY_PORT:8090}

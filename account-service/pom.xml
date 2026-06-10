@@ -27,6 +27,7 @@
 		<url/>
 	</scm>
 	<properties>
+		<docker.registry>local</docker.registry>
 		<java.version>21</java.version>
 		<spring-ai.version>2.0.0-M2</spring-ai.version>
 		<spring-cloud.version>2025.1.0</spring-cloud.version>
@@ -184,20 +185,12 @@
                 <version>3.4.4</version>
                 <configuration>
                     <to>
-                        <image>docker.io/anuj55149/lovable-${project.name}:${project.version}</image>
+                        <image>${docker.registry}/lovable-${project.name}:${project.version}</image>
                         <tags>
                             <tag>latest</tag>
                         </tags>
                     </to>
                 </configuration>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>build</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
 		</plugins>
 	</build>
