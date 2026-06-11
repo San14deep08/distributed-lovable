@@ -10,17 +10,13 @@ spring:
     driver-class-name: org.postgresql.Driver
 
   ai:
-    model.chat: openai
-    openai:
+    model.chat: anthropic
+    anthropic:
       api-key: ${AI_API_KEY:dummy-key}
-      base-url: https://openrouter.ai/api
       chat:
         options:
-          model: google/gemini-3-flash-preview
-          temperature: 0.2
-      embedding:
-        options:
-          model: qwen/qwen3-embedding-8b
+          model: ${AI_MODEL:claude-opus-4-8}
+          max-tokens: 16000
 
 ---
 
@@ -34,11 +30,12 @@ spring:
     password: ${DB_PASSWORD}
 
 ai:
-    openai:
+    anthropic:
       api-key: ${AI_API_KEY}
-    chat:
+      chat:
         options:
-          model: google/gemini-3-flash-preview
+          model: ${AI_MODEL:claude-opus-4-8}
+          max-tokens: 16000
 ---
 
 spring:
@@ -51,5 +48,9 @@ spring:
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
   ai:
-    openai:
+    anthropic:
       api-key: ${AI_API_KEY:dummy-key}
+      chat:
+        options:
+          model: ${AI_MODEL:claude-opus-4-8}
+          max-tokens: 16000
